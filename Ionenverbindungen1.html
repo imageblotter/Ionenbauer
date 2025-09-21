@@ -1,0 +1,304 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Ionenverbindungen</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          boxShadow: { soft: "0 10px 30px rgba(2,6,23,.08)" },
+          colors: { brand: { 500: "#1e98ff", 600: "#0f7fe6" } }
+        }
+      },
+      darkMode: 'class'
+    }
+  </script>
+  <style>
+    .dropzone[data-active="true"]{ outline: 3px dashed rgb(30,152,255); outline-offset: 4px }
+    .token { touch-action: none }
+    .chem { font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji" }
+    .chem sup { font-size:.7em; vertical-align: super }
+    .chem sub { font-size:.75em; vertical-align: sub }
+    .slot { transition: background-color .15s ease, transform .12s ease }
+    .slot[data-filled="true"] { transform: translateY(-1px) }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-900 min-h-dvh">
+  <header class="bg-white border-b border-slate-200">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between">
+      <h1 class="text-lg sm:text-xl font-semibold">Baue Ionenverbindungen</h1>
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto p-4 sm:p-6">
+    <div class="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_360px] gap-6">
+      <!-- Left: Workbench -->
+      <section class="bg-white rounded-2xl border border-slate-200 shadow-soft p-4 sm:p-6">
+        <!-- Headings -->
+        <div class="grid grid-cols-2 gap-4 mb-3">
+          <h2 class="text-xl font-semibold tracking-tight">Kationen</h2>
+          <h2 class="text-xl font-semibold tracking-tight text-right">Anionen</h2>
+        </div>
+
+        <!-- Pools -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div id="cationPool" class="grid grid-cols-4 gap-2" aria-label="Available cations"></div>
+          <div id="anionPool" class="grid grid-cols-4 gap-2" aria-label="Available anions"></div>
+        </div>
+
+        <!-- Workspace -->
+        <div class="mt-6 grid grid-cols-[minmax(0,1fr)_140px] gap-4 items-start">
+          <!-- Beaker with 7 slots -->
+          <div id="beaker" class="dropzone relative aspect-[5/3] md:aspect-[3/2] rounded-full border-2 border-slate-300 bg-slate-50 overflow-hidden"
+               aria-label="workspace circle" data-kind="beaker">
+            <div class="absolute inset-6 md:inset-10 rounded-full border border-slate-200 pointer-events-none"></div>
+
+            <!-- Slot layer -->
+            <div class="absolute inset-0 grid place-items-center">
+              <div class="relative size-[92%]">
+                <div id="slots" class="chem"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Actions -->
+          <div class="grid gap-3">
+            <button id="combineBtn" class="rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-3 font-semibold">kombinieren</button>
+            <button id="newSet" class="rounded-xl border border-slate-200 hover:bg-slate-50 px-4 py-3 font-semibold">neue Ionen</button>
+            <button id="resetBtn" class="rounded-xl border border-slate-200 hover:bg-slate-50 px-4 py-3">zurücksetzen</button>
+          </div>
+        </div>
+
+        <!-- Footer strip -->
+        <div class="mt-6 grid grid-cols-[minmax(220px,1fr)_minmax(220px,1fr)] gap-4">
+          <!-- Results -->
+          <div class="rounded-2xl border border-slate-200 p-4 bg-white">
+            <h3 class="font-semibold mb-2">Ergebnis</h3>
+            <div id="results" class="space-y-2 text-lg chem" aria-live="polite"></div>
+          </div>
+
+          <!-- Feedback -->
+          <div class="rounded-2xl border border-slate-200 p-4 bg-white flex items-center justify-between gap-4">
+            <div>
+              <h3 class="font-semibold mb-1">Fehler?</h3>
+              <p id="feedbackText" class="text-slate-600 text-sm">Platzieren Sie maximal 7 Ionen.</p>
+            </div>
+            <div id="feedbackIcon" aria-hidden="true" class="text-3xl">✖️</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Right: Instructions -->
+      <aside class="bg-white rounded-2xl border border-slate-200 shadow-soft p-5 leading-relaxed">
+        <p class="mb-2">Klicke auf die Ionen, um Sie dem Feld hinzuzufügen.</p>
+        <p class="mb-2">Drücke <span class="font-semibold text-emerald-700">kombinieren</span> zum Überprüfen.</p>
+        <p class="mb-2">Du erhälst Rückmeldung, ob dein Ergebnis stimmt.</p>
+        <p class="text-slate-500 text-sm mt-4">Klicke auf ein Ion, um es wieder aus dem Feld zu entfernen</p>
+        <hr class="my-4">
+      </aside>
+    </div>
+  </main>
+
+  <template id="tokenTpl">
+    <button draggable="true"
+      class="token chem group relative rounded-xl border border-slate-300 bg-white hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-brand-500 px-2 py-2 h-12 grid place-items-center text-sm"
+      aria-grabbed="false"></button>
+  </template>
+
+  <script>
+    let SETTINGS = { maxSlots: 7 };
+
+    let CATIONS = [
+      { sym:"Na", name:"Natrium", charge:+1 },
+      { sym:"Li", name:"Lithium", charge:+1 },
+      { sym:"K",  name:"Kalium", charge:+1 },
+      { sym:"Ca", name:"Calcium", charge:+2 },
+      { sym:"Mg", name:"Magnesium", charge:+2 },
+      { sym:"Al", name:"Aluminium", charge:+3 },
+      { sym:"NH₄", name:"Ammonium", charge:+1, poly:true },
+      { sym:"Fe", name:"Eisen(III)", charge:+3 },
+      { sym:"Cu", name:"Kupfer(II)", charge:+2 },
+      { sym:"Zn", name:"Zink", charge:+2 },
+      { sym:"Ag", name:"Silber", charge:+1 },
+      { sym:"Pb", name:"Blei(II)", charge:+2 },
+      { sym:"Sn", name:"Zinn(II)", charge:+2 },
+      { sym:"Ba", name:"Barium", charge:+2 },
+      { sym:"Sr", name:"Strontium", charge:+2 }
+    ];
+    let ANIONS = [
+      { sym:"Cl", name:"Chlorid", charge:-1 },
+      { sym:"Br", name:"Bromid", charge:-1 },
+      { sym:"I",  name:"Iodid", charge:-1 },
+      { sym:"F",  name:"Fluorid", charge:-1 },
+      { sym:"O",  name:"Oxid", charge:-2 },
+      { sym:"S",  name:"Sulfid", charge:-2 },
+      { sym:"NO₃", name:"Nitrat", charge:-1, poly:true },
+      { sym:"SO₄", name:"Sulfat", charge:-2, poly:true },
+      { sym:"CO₃", name:"Carbonat", charge:-2, poly:true },
+      { sym:"PO₄", name:"Phosphat", charge:-3, poly:true },
+      { sym:"OH",  name:"Hydroxid", charge:-1, poly:true },
+      { sym:"CN",  name:"Cyanid", charge:-1, poly:true },
+      { sym:"MnO₄", name:"Permanganat", charge:-1, poly:true },
+      { sym:"CrO₄", name:"Chromat", charge:-2, poly:true },
+      { sym:"Cr₂O₇", name:"Dichromat", charge:-2, poly:true }
+    ];
+
+    const $ = (sel, root=document) => root.querySelector(sel);
+    const $$ = (sel, root=document) => [...root.querySelectorAll(sel)];
+    const tpl = $("#tokenTpl");
+
+    function shuffle(arr){ const a=[...arr]; for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]} return a }
+    function superscriptCharge(charge){ const n = Math.abs(charge); const sign = charge>0 ? "+" : "−"; return `<sup>${n===1?"":n}${sign}</sup>`; }
+    function renderIonLabel(ion){ return `${ion.sym}${superscriptCharge(ion.charge)}`; }
+
+    let placed = Array(SETTINGS.maxSlots).fill(null);
+
+    function fillPools(){
+      $("#cationPool").innerHTML = "";
+      $("#anionPool").innerHTML = "";
+      const c4 = shuffle(CATIONS).slice(0,4);
+      const a4 = shuffle(ANIONS).slice(0,4);
+      c4.forEach(ion => $("#cationPool").appendChild(makeToken(ion, 'cation')));
+      a4.forEach(ion => $("#anionPool").appendChild(makeToken(ion, 'anion')));
+    }
+    function makeToken(ion, type){
+      const btn = tpl.content.firstElementChild.cloneNode(true);
+      btn.dataset.type = type; btn.dataset.sym = ion.sym;
+      btn.dataset.name = ion.name; btn.dataset.charge = ion.charge;
+      btn.dataset.poly = !!ion.poly;
+      btn.innerHTML = `<span class="chem">${ion.sym}${superscriptCharge(ion.charge)}</span>`;
+      btn.setAttribute('aria-label', `${ion.name} ${type}`);
+      btn.addEventListener('click', () => placeIntoFirstEmpty(ion, type));
+      enableDnD(btn);
+      return btn;
+    }
+
+    function buildSlots(){
+      const container = $("#slots");
+      container.innerHTML = "";
+      placed = Array(SETTINGS.maxSlots).fill(null);
+      const R = 38, n = SETTINGS.maxSlots;
+      for(let i=0;i<n;i++){
+        const angle = (-90 + (360/n)*i) * Math.PI/180;
+        const left = 50 + R*Math.cos(angle);
+        const top  = 50 + R*Math.sin(angle);
+        const btn = document.createElement('button');
+        btn.type = "button";
+        btn.className = "slot absolute -translate-x-1/2 -translate-y-1/2 min-w-[78px] h-10 rounded-xl border border-slate-300 bg-white/80 hover:bg-slate-100 px-2 grid place-items-center text-sm chem";
+        btn.style.left = left + "%"; btn.style.top  = top  + "%";
+        btn.id = `slot-${i}`; btn.dataset.index = i; btn.dataset.filled = "false";
+        btn.addEventListener('click', () => clearSlot(i));
+        enableSlotDnD(btn); container.appendChild(btn);
+      }
+    }
+    function renderSlots(){
+      for(let i=0;i<placed.length;i++){
+        const el = $(`#slot-${i}`), ion = placed[i];
+        if(ion){ el.innerHTML = `<span class="chem">${ion.sym}${superscriptCharge(ion.charge)}</span>`; el.dataset.filled = "true"; el.classList.add("bg-white"); }
+        else { el.innerHTML = ""; el.dataset.filled = "false"; el.classList.remove("bg-white"); }
+      }
+    }
+    function clearSlot(i){ placed[i] = null; renderSlots(); clearFeedback(); }
+    function placeIntoFirstEmpty(ion, type){
+      const idx = placed.findIndex(x => x===null);
+      if(idx === -1){ setFeedback(false,"Alle 7 Plätze sind belegt."); return; }
+      placed[idx] = {...ion, type}; renderSlots(); clearFeedback();
+    }
+
+    const beaker = $("#beaker");
+
+    function enableDnD(el){
+      el.addEventListener('dragstart', ev => {
+        ev.dataTransfer.setData('text/plain', JSON.stringify({
+          sym: el.dataset.sym, name: el.dataset.name,
+          charge: Number(el.dataset.charge),
+          poly: el.dataset.poly === 'true',
+          type: el.dataset.type
+        }));
+        el.setAttribute('aria-grabbed','true');
+        beaker.dataset.active = 'true';
+        $$("#slots .slot").forEach(s=>s.dataset.active="true");
+      });
+      el.addEventListener('dragend', () => {
+        el.setAttribute('aria-grabbed','false');
+        beaker.dataset.active = 'false';
+        $$("#slots .slot").forEach(s=>s.dataset.active="false");
+      });
+    }
+    function enableSlotDnD(slot){
+      slot.addEventListener('dragover', e => e.preventDefault());
+      slot.addEventListener('drop', e => {
+        e.preventDefault();
+        const data = e.dataTransfer.getData('text/plain');
+        if(!data) return;
+        const ion = JSON.parse(data);
+        placed[Number(slot.dataset.index)] = ion;
+        renderSlots(); clearFeedback();
+      });
+    }
+
+    document.getElementById("combineBtn").addEventListener('click', () => {
+      const used = placed.filter(Boolean);
+      if(used.length === 0){ setFeedback(false, "Platzieren Sie wenigstens ein Ion."); return; }
+
+      const total = used.reduce((s,i)=>s+i.charge,0);
+      const hasCation = used.some(i=>i.charge>0), hasAnion  = used.some(i=>i.charge<0);
+      const ok = (total === 0) && hasCation && hasAnion;
+
+      if(ok){
+        const formula = buildFormula(used);
+        showFormulaResult(formula, true);
+        setFeedback(true, "Ausgeglichen.");
+      } else {
+        document.getElementById("results").innerHTML = "";
+        setFeedback(false, "Nicht neutral.");
+      }
+    });
+
+    function buildFormula(ions){
+      const groups = { c: new Map(), a: new Map() };
+      ions.forEach(i => {
+        const kind = i.charge > 0 ? 'c' : 'a';
+        const key = i.sym;
+        if(!groups[kind].has(key)) groups[kind].set(key, { sym:i.sym, poly:!!i.poly, count:0 });
+        groups[kind].get(key).count += 1;
+      });
+      const fmt = ({sym, poly, count}) => {
+        if(count === 1) return sym;
+        return (poly ? `(${sym})` : sym) + `<sub>${count}</sub>`;
+      };
+      const cat = [...groups.c.values()].map(fmt).join('');
+      const an  = [...groups.a.values()].map(fmt).join('');
+      return cat + an;
+    }
+
+    function showFormulaResult(formula, ok){
+      const results = document.getElementById("results");
+      results.innerHTML = `
+        <div class="flex items-center gap-3">
+          <span class="text-emerald-600 text-xl">${ok ? "✔️" : ""}</span>
+          <span class="text-2xl chem">${formula}</span>
+        </div>
+      `;
+    }
+
+    function clearFeedback(){ setFeedback(null, "Platzieren Sie Ionen und gleichen Sie aus."); }
+    function setFeedback(ok, text){
+      const icon = $("#feedbackIcon"), label = $("#feedbackText");
+      label.textContent = text;
+      if(ok === true){ icon.textContent = "✔️"; icon.className = "text-3xl text-emerald-600"; }
+      else if(ok === false){ icon.textContent = "✖️"; icon.className = "text-3xl text-rose-600"; }
+      else { icon.textContent = "✖️"; icon.className = "text-3xl text-slate-300"; }
+    }
+
+    function clearBoard(){ placed = Array(SETTINGS.maxSlots).fill(null); renderSlots(); clearFeedback(); document.getElementById("results").innerHTML = ""; }
+    document.getElementById("resetBtn").addEventListener('click', clearBoard);
+    document.getElementById("newSet").addEventListener('click', fillPools);
+
+    buildSlots(); fillPools(); renderSlots();
+  </script>
+</body>
+</html>
