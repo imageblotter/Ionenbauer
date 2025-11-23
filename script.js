@@ -424,15 +424,15 @@ function confettiEffect() {
             easing: 'cubic-bezier(0, .9, .57, 1)'
         }).onfinish = () => el.remove();
     }
+
 }
 
 // Fullscreen Logic
-// Fullscreen Logic
 const fullscreenBtn = $("#fullscreenBtn");
-const fullscreenIcon = fullscreenBtn.querySelector("span");
+const fullscreenIcon = fullscreenBtn ? fullscreenBtn.querySelector("span") : null;
 
 function log(msg) {
-    console.log("[Fullscreen]", msg);
+    console.log("[Fullscreen Debug]", msg);
 }
 
 function toggleFullscreen() {
@@ -502,21 +502,27 @@ const updateFullscreenButton = (e) => {
         document.msFullscreenElement;
 
     if (!isFullscreen) {
-        fullscreenIcon.textContent = "fullscreen";
-        fullscreenBtn.setAttribute("aria-label", "Vollbild aktivieren");
+        if (fullscreenIcon) fullscreenIcon.textContent = "fullscreen";
+        if (fullscreenBtn) fullscreenBtn.setAttribute("aria-label", "Vollbild aktivieren");
         log("State: Normal");
     } else {
-        fullscreenIcon.textContent = "fullscreen_exit";
-        fullscreenBtn.setAttribute("aria-label", "Vollbild verlassen");
+        if (fullscreenIcon) fullscreenIcon.textContent = "fullscreen_exit";
+        if (fullscreenBtn) fullscreenBtn.setAttribute("aria-label", "Vollbild verlassen");
         log("State: Fullscreen");
     }
 };
 
+// Initialization Check
+console.log("Script loaded. Checking for fullscreen button...");
 if (fullscreenBtn) {
-    fullscreenBtn.addEventListener('click', () => {
-        log("Button clicked");
+    console.log("Fullscreen button found:", fullscreenBtn);
+    fullscreenBtn.addEventListener('click', (e) => {
+        console.log("Button clicked (event listener)");
         toggleFullscreen();
     });
+} else {
+    console.error("CRITICAL: Fullscreen button NOT found in DOM!");
+    alert("Fehler: Vollbild-Button nicht gefunden!");
 }
 
 document.addEventListener('fullscreenchange', updateFullscreenButton);
