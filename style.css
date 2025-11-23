@@ -1,0 +1,97 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap');
+
+:root {
+  --glass-border: rgba(255, 255, 255, 0.5);
+  --glass-bg: rgba(255, 255, 255, 0.7);
+  --glass-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.1);
+}
+
+body {
+  font-family: 'Outfit', sans-serif;
+  background: linear-gradient(135deg, #f0f4ff 0%, #e0e7ff 100%);
+  background-attachment: fixed;
+}
+
+.glass-panel {
+  background: var(--glass-bg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow);
+}
+
+.chem {
+  font-family: 'Outfit', sans-serif;
+  letter-spacing: -0.02em;
+}
+
+.chem sup {
+  font-size: 0.7em;
+  vertical-align: super;
+  margin-left: 1px;
+}
+
+.chem sub {
+  font-size: 0.75em;
+  vertical-align: sub;
+  margin-left: 1px;
+}
+
+/* Custom Drag Avatar */
+.drag-avatar {
+  position: fixed;
+  pointer-events: none;
+  z-index: 9999;
+  transform: translate(-50%, -50%) scale(1.1);
+  opacity: 0.9;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+  transition: transform 0.1s;
+}
+
+/* Slot Styles */
+.slot {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.slot[data-filled="true"] {
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  border-color: #3b82f6;
+}
+
+.slot.drag-over {
+  background-color: rgba(59, 130, 246, 0.1);
+  border-color: #3b82f6;
+  transform: scale(1.1);
+}
+
+/* Token Styles */
+.token {
+  touch-action: none;
+  user-select: none;
+  transition: all 0.2s ease;
+}
+
+.token:active {
+  transform: scale(0.95);
+}
+
+/* Animations */
+@keyframes popIn {
+  0% { transform: scale(0.8); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.animate-pop {
+  animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+@keyframes float {
+  0% { transform: translateY(0px); }
+  50% { transform: translateY(-5px); }
+  100% { transform: translateY(0px); }
+}
+
+.floating {
+  animation: float 3s ease-in-out infinite;
+}
